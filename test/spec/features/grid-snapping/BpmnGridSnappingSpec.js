@@ -13,7 +13,12 @@ import {
   createCanvasEvent as canvasEvent
 } from '../../../util/MockEvents';
 
-import { isString } from 'min-dash';
+import { getMid } from 'diagram-js/lib/layout/LayoutUtil';
+
+import {
+  isString,
+  pick
+} from 'min-dash';
 
 var LOW_PRIORITY = 500;
 
@@ -43,7 +48,7 @@ describe('features/grid-snapping', function() {
   }));
 
 
-  describe('snap top-left', function() {
+  describe('snap top-left on move', function() {
 
     it('participant', inject(function(dragging, eventBus, move) {
 
@@ -151,6 +156,111 @@ describe('features/grid-snapping', function() {
 
   });
 
+
+  describe('auto resize <nwse> on toggle collapse', function() {
+
+    describe('collapsing', function() {
+
+      it('participant (no auto resize)', inject(function(bpmnReplace) {
+
+        // given
+        var bounds = getBounds(participant);
+
+        // when
+        var collapsedParticipant = bpmnReplace.replaceElement(participant,
+          {
+            type: 'bpmn:Participant',
+            isExpanded: false
+          }
+        );
+
+        // then
+        expect(getBounds(collapsedParticipant)).to.eql(bounds);
+      }));
+
+
+      it('sub process (no auto resize)', inject(function(bpmnReplace) {
+
+        // given
+        var mid = getMid(subProcess);
+
+        // when
+        var collapsedSubProcess = bpmnReplace.replaceElement(subProcess,
+          {
+            type: 'bpmn:SubProcess',
+            isExpanded: false
+          }
+        );
+
+        // then
+        expect(getMid(collapsedSubProcess)).to.eql(mid);
+        expect(collapsedSubProcess).to.include({
+          width: 100,
+          height: 80
+        });
+      }));
+
+    });
+
+
+    describe('expanding', function() {
+
+      it('participant (auto resize <nwse>)', inject(function(bpmnReplace) {
+
+        // given
+        var bounds = getBounds(participant);
+
+        var collapsedParticipant = bpmnReplace.replaceElement(participant,
+          {
+            type: 'bpmn:Participant',
+            isExpanded: false
+          }
+        );
+
+        // when
+        var expandedParticipant = bpmnReplace.replaceElement(collapsedParticipant,
+          {
+            type: 'bpmn:Participant',
+            isExpanded: true
+          }
+        );
+
+        // then
+        expect(getBounds(expandedParticipant)).to.eql(bounds);
+      }));
+
+
+      it('sub process (auto resize <nwse>)', inject(function(bpmnReplace) {
+
+        // given
+        var collapsedSubProcess = bpmnReplace.replaceElement(subProcess,
+          {
+            type: 'bpmn:SubProcess',
+            isExpanded: false
+          }
+        );
+
+        // when
+        var expandedSubProcess = bpmnReplace.replaceElement(collapsedSubProcess,
+          {
+            type: 'bpmn:SubProcess',
+            isExpanded: true
+          }
+        );
+
+        // then
+        expect(expandedSubProcess).to.include({
+          x: 140,
+          y: 120,
+          width: 360,
+          height: 210
+        });
+      }));
+
+    });
+
+  });
+
 });
 
 // helpers //////////
@@ -214,4 +324,8 @@ function position(event) {
     x: event.x,
     y: event.y
   };
+}
+
+function getBounds(shape) {
+  return pick(shape, [ 'x', 'y', 'width', 'height' ]);
 }
